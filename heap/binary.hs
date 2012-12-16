@@ -118,7 +118,7 @@ deleteMin (H h) =
         case r of
           Neither re _ -> -- they're both neither
             let Neither le _ = l
-            in (a, Once (max le re) (Neither (min le re) 1) 2)
+            in (a, Once (min le re) (Neither (max le re) 1) 2)
           _ -> -- neither are neither
             let (e, newr) = dm r
                 l' = insert' e l
