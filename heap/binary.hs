@@ -4,7 +4,7 @@ import Data.Maybe
 
 type Size = Int
 
-data Heap a = E | H a (Heap a) (Heap a) Size
+data Heap a = E | H a (Heap a) (Heap a) Size deriving (Show)
 
 -- verify heap integrity
 sizes :: (Eq a, Ord a) => Heap a -> Bool
@@ -18,24 +18,24 @@ structure :: (Eq a, Ord a) => Heap a -> Bool
 structure E = True
 structure (H e l r _) =
   let
-    lh = structure l && if isEmpty l then True else e <= fromJust $ minimum l
-    lh = structure r && if isEmpty r then True else e <= fromJust $ minimum r
+    lh = structure l && if isEmpty l then True else e <= fromJust (minelt l)
+    rh = structure r && if isEmpty r then True else e <= fromJust (minelt r)
   in lh && rh
 
 isGood :: (Eq a, Ord a) => Heap a -> Bool
 isGood x = sizes x && structure x
 
--- gets the smallest element
-minimum :: (Eq a, Ord a) => Heap a -> Maybe a
-minimum E = Nothing
-minimum (H x _ _ _) = x
+-- gets the smallest eltent
+minelt :: (Eq a, Ord a) => Heap a -> Maybe a
+minelt E = Nothing
+minelt (H x _ _ _) = Just x
 
 -- is the heap empty
 isEmpty :: (Eq a, Ord a) => Heap a -> Bool
 isEmpty E = True
 isEmpty _ = False
 
--- number of elements contained
+-- number of eltents contained
 size :: (Eq a, Ord a) => Heap a -> Size
 size E = 0
 size (H _ _ _ s) = s
@@ -44,41 +44,45 @@ size (H _ _ _ s) = s
 empty :: (Eq a, Ord a) => Heap a
 empty = E
 
--- create a heap of one element
+-- create a heap of one eltent
 singleton :: (Eq a, Ord a) => a -> Heap a
 singleton x = H x E E 1
 
 -- insert into the heap
 insert :: (Eq a, Ord a) => a -> Heap a -> Heap a
-insert a E = H a E E a
+insert a E = H a E E 1
 insert a (H e l r s)
   | a < e = insert e (H a l r s)
-  | size l > size r = H left (insert a right) (s+1)
-  | otherwise = H (insert a left) right (s+1)
+  | size l > size r = H e l (insert a r) (s+1)
+  | otherwise = H e (insert a l) r (s+1)
 
--- delete the minimum element
+-- delete the minelt eltent
 deleteMin :: (Ord a, Eq a) => Heap a -> (Maybe a, Heap a)
-deleteMin E = (Nothing, Empty)
+deleteMin E = (Nothing, E)
 deleteMin (H e l r s)
   | isEmpty l && isEmpty r = (Just e, E)
   | size l > size r =
     let (Just x, newl) = deleteMin l
-    in (Just e, H x newl r (s-1))
+        newr = insert x r
+        (Just q, newr') = deleteMin newr
+    in (Just e, H q newl newr' (s-1))
   | otherwise =
     let (Just x, newr) = deleteMin r
-    in (Just e, H x l newr (s-1))
+        newl = insert x l
+        (Just q, newl') = deleteMin newl
+    in (Just e, H q newl' newr (s-1))
 
 -- is the element in the heap
-elem :: (Ord a, Eq a) => a -> Heap a -> Bool
-elem _ E = False
-elem x (H e l r s) =
+elt :: (Ord a, Eq a) => a -> Heap a -> Bool
+elt _ E = False
+elt x (H e l r s) =
   let ch = x == e
-      lh = if x >= minimum l then elem x l else False
-      rh = if x >= minimum r then elem x r else False
+      lh = if x >= fromMaybe x (minelt l) then elt x l else False
+      rh = if x >= fromMaybe x (minelt r) then elt x r else False
   in ch || rh || lh
 
--- delete all occurrences of the specified element from the heap
--- if there are multiple occurrences of an element in the heap, the shape
+-- delete all occurrences of the specified eltent from the heap
+-- if there are multiple occurrences of an eltent in the heap, the shape
 -- property is not guaranteed to be preserved.  However, insert and delete
 -- operations do not assume this property and it will approach the shape
 -- property over successive applications of both.
@@ -104,5 +108,5 @@ fromList = undefined
 -- turns a heap into a list
 toList = undefined
 
--- return the largest element of the heap
+-- return the largest eltent of the heap
 maximum = undefined
