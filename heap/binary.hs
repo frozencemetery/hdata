@@ -99,14 +99,57 @@ deleteAll x (H e l r s) =
         (rb, newr) = deleteAll x r
     in (lb || rb, H e newl newr (size newl + size newr))
 
--- combine two heaps
-meld = undefined
+-- return the largest element of the heap
+-- this is an O(n) traversal
+maxelt :: (Ord a, Eq a) => Heap a -> Maybe a
+maxelt E = Nothing
+maxelt (H e l r s) =
+  let lm = fromMaybe e $ maxelt l
+      rm = fromMaybe e $ maxelt r
+  in Just $ max e $ max lm rm
+
+-- turns a heap into a sorted list
+-- O(n log n), but better than doing it and then qsorting it
+-- in fact, it happens at the speed of heapsort
+-- funny thing about that
+toList :: (Ord a, Eq a) => Heap a -> [a]
+toList = reverse . toRlist
+
+-- turns a heap into a reverse-sorted list
+-- see note at toList
+-- will be faster than toList because it does not reverse
+toRlist :: (Ord a, Eq a) => Heap a -> [a]
+toRlist h =
+  let tl :: (Ord a, Eq a) => [Heap a] -> [a] -> [a]
+      tl [] acc = acc
+      tl hl acc =
+        let next = minimum $ catMaybes $ map minelt hl
+            tv :: (Ord a, Eq a) => [Heap a] -> a -> [Heap a]
+            tv [] _ = []
+            tv (E:xs) e = tv xs e
+            tv ((H e l r s):xs) x = 
+              if e == x then 
+                tv (l : r : xs) x 
+              else (H e l r s) : tv xs x
+            newhl = tv hl next
+        in tl newhl (next : acc)
+  in tl [h] []
+
+-- turns a heap into an unordered list
+-- this is O(n)
+toUlist :: (Ord a, Eq a) => Heap a -> [a]
+toUlist h =
+  let tl :: (Ord a, Eq a) => [Heap a] -> [a] -> [a]
+      tl [] acc = acc
+      tl (E:xs) acc = tl xs acc
+      tl ((H e l r s):xs) acc = tl (l : r : xs) (e : acc)
+  in tl [h] []
 
 -- turn a list into a heap
+-- O(n), so better than mapping insert over your list
+-- problem is, I think functional insertion even into bst is O(log n) per elt
 fromList = undefined
 
--- turns a heap into a list
-toList = undefined
-
--- return the largest eltent of the heap
-maximum = undefined
+-- combine two heaps
+-- if fromList is O(n), and toList is O(n), then this is easy
+meld = undefined
