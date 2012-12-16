@@ -17,7 +17,10 @@ data Heap' a = Neither a Size
 sizes :: (Eq a, Ord a) => Heap' a -> Bool
 sizes (Neither _ s) = s == 1
 sizes (Once _ l s) = sizes l && s == (1 + size' l)
-sizes (Both _ l r s) = sizes l && sizes r && abs (size' l - size' r) <= 1 && s == size' l + size' r + 1
+sizes (Both _ l r s) = sizes l && 
+                       sizes r && 
+                       abs (size' l - size' r) <= 1 && 
+                       s == size' l + size' r + 1
 
 structure :: (Eq a, Ord a) => Heap' a -> Bool
 structure (Neither _ _) = True
@@ -85,13 +88,12 @@ insert x (H h) = H $
         Both a bh (Neither b 1) (s+1)
       else
         Both b bh (Neither a 1) (s+1)
-    insert' a (Both b left right s) = 
-      if a < b then
-        insert' b (Both a left right s)
-      else if (size' left) > (size' right) then
+    insert' a (Both b left right s)
+      | a < b = insert' b (Both a left right s)
+      | size' left > size' right =
         -- insert into right
         Both b left (insert' a right) (s+1)
-      else
+      | otherwise =
         -- insert into left
         Both b (insert' a left) right (s+1)
   in
