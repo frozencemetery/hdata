@@ -4,157 +4,99 @@ import Data.Maybe
 
 type Size = Int
 
-data Heap a = Empty
-            | H (Heap' a)
-              deriving (Show) -- debug only
-
-data Heap' a = Neither a Size
-             | Once a (Heap' a) Size -- always left
-             | Both a (Heap' a) (Heap' a) Size
-               deriving (Show) -- debug only
+data Heap a = E | H a (Heap a) (Heap a) Size
 
 -- verify heap integrity
-sizes :: (Eq a, Ord a) => Heap' a -> Bool
-sizes (Neither _ s) = s == 1
-sizes (Once _ l s) = sizes l && s == (1 + size' l)
-sizes (Both _ l r s) = sizes l && 
-                       sizes r && 
-                       abs (size' l - size' r) <= 1 && 
-                       s == size' l + size' r + 1
+sizes :: (Eq a, Ord a) => Heap a -> Bool
+sizes E = True
+sizes (H _ l r s) = sizes l &&
+                    sizes r &&
+                    abs (size l - size r) <= 1 &&
+                    s == size l + size r + 1
 
-structure :: (Eq a, Ord a) => Heap' a -> Bool
-structure (Neither _ _) = True
-structure (Once e l _) = case l of Neither x _ -> e <= x
-                                   Once x _ _ -> e <= x && structure l
-                                   Both x _ _ _ -> e <= x && structure l
-structure (Both e l r _) =
+structure :: (Eq a, Ord a) => Heap a -> Bool
+structure E = True
+structure (H e l r _) =
   let
-    lh = case l of Neither x _ -> e <= x
-                   Once x _ _ -> e <= x && structure l
-                   Both x _ _ _ -> e <= x && structure l
-    rh = case r of Neither x _ -> e <= x
-                   Once x _ _ -> e <= x && structure r
-                   Both x _ _ _ -> e <= x && structure r
-  in
-    lh && rh
+    lh = structure l && if isEmpty l then True else e <= fromJust $ minimum l
+    lh = structure r && if isEmpty r then True else e <= fromJust $ minimum r
+  in lh && rh
 
 isGood :: (Eq a, Ord a) => Heap a -> Bool
-isGood Empty = True
-isGood (H h) = sizes h && structure h
+isGood x = sizes x && structure x
 
 -- gets the smallest element
-getMin' :: (Eq a, Ord a) => Heap' a -> a
-getMin' (Neither a _) = a
-getMin' (Once a _ _) = a
-getMin' (Both a _ _ _) = a
-getMin :: (Eq a, Ord a) => Heap a -> Maybe a
-getMin Empty = Nothing
-getMin (H h) = Just $ getMin' h
+minimum :: (Eq a, Ord a) => Heap a -> Maybe a
+minimum E = Nothing
+minimum (H x _ _ _) = x
 
 -- is the heap empty
 isEmpty :: (Eq a, Ord a) => Heap a -> Bool
-isEmpty Empty = True
-isEmpty (H _) = False
+isEmpty E = True
+isEmpty _ = False
 
--- it's nice to have size' for internal use
-size' :: (Eq a, Ord a) => Heap' a -> Size
-size' h = case h of Neither _ s -> s
-                    Once _ _ s -> s
-                    Both _ _ _ s -> s
 -- number of elements contained
 size :: (Eq a, Ord a) => Heap a -> Size
-size Empty = 0
-size (H h) = size' h
+size E = 0
+size (H _ _ _ s) = s
 
 -- create a new empty heap
 empty :: (Eq a, Ord a) => Heap a
-empty = Empty
+empty = E
 
 -- create a heap of one element
 singleton :: (Eq a, Ord a) => a -> Heap a
-singleton x = H (Neither x 1)
-
--- return the smallest element of the heap
-minimum :: (Eq a, Ord a) => Heap a -> Maybe a
-minimum Empty = Nothing
-minimum (H h) = Just $ case h of Neither x _ -> x
-                                 Once x _ _ -> x
-                                 Both x _ _ _ -> x
+singleton x = H x E E 1
 
 -- insert into the heap
-insert' :: (Eq a, Ord a) => a -> Heap' a -> Heap' a
-insert' a (Neither b s) =
-  if a <= b then
-    Once a (Neither b 1) 2
-  else
-    Once b (Neither a 1) 2
-insert' a (Once b bh s) =
-  if a <= b then
-    Both a bh (Neither b 1) (s+1)
-  else
-    Both b bh (Neither a 1) (s+1)
-insert' a (Both b left right s)
-  | a < b = insert' b (Both a left right s)
-  | size' left > size' right =
-    -- insert into right
-    Both b left (insert' a right) (s+1)
-  | otherwise =
-    -- insert into left
-    Both b (insert' a left) right (s+1)
 insert :: (Eq a, Ord a) => a -> Heap a -> Heap a
-insert x Empty = H $ Neither x 1
-insert x (H h) = H $ insert' x h
+insert a E = H a E E a
+insert a (H e l r s)
+  | a < e = insert e (H a l r s)
+  | size l > size r = H left (insert a right) (s+1)
+  | otherwise = H (insert a left) right (s+1)
 
 -- delete the minimum element
 deleteMin :: (Ord a, Eq a) => Heap a -> (Maybe a, Heap a)
-deleteMin Empty = (Nothing, Empty)
-deleteMin (H (Neither a 1)) = (Just a, Empty)
-deleteMin (H h) =
-  let
-    dm :: (Ord a, Eq a) => Heap' a -> (a, Heap' a)
-    dm (Neither a 1) = undefined -- should never be reached
-    dm (Once a l s) = (a, l)
-    dm (Both a l r s) =
-      if size' l > size' r then
-        -- take it from l
-        -- this will never be Neither because strict >
-        let (e, newl) = dm l
-            r' = insert' e r -- rebalance code is redundant
-            (q, newr) = dm r'
-        in (a, Both q newl newr (s-1))
-      else
-        -- take it from r
-        case r of
-          Neither re _ -> -- they're both neither
-            let Neither le _ = l
-            in (a, Once (min le re) (Neither (max le re) 1) 2)
-          _ -> -- neither are neither
-            let (e, newr) = dm r
-                l' = insert' e l
-                (q, newl) = dm l'
-            in (a, Both q newl newr (s-1))
-  in
-    case dm h of (a, ha) -> (Just a, H ha)
+deleteMin E = (Nothing, Empty)
+deleteMin (H e l r s)
+  | isEmpty l && isEmpty r = (Just e, E)
+  | size l > size r =
+    let (Just x, newl) = deleteMin l
+    in (Just e, H x newl r (s-1))
+  | otherwise =
+    let (Just x, newr) = deleteMin r
+    in (Just e, H x l newr (s-1))
 
 -- is the element in the heap
-elem' :: (Ord a, Eq a) => a -> Heap' a -> Bool
-elem' x (Neither a _) = x == a
-elem' x (Once a l _) = x == a || elem' x l -- should short-circuit
-elem' x (Both a l r _) =
-  let ch = x == a
-      lh = if x >= getMin' l then elem' x l else False
-      rh = if x >= getMin' r then elem' x r else False
-  in
-    ch || rh || lh
 elem :: (Ord a, Eq a) => a -> Heap a -> Bool
-elem x Empty = False
-elem x (H h) = elem' x h
+elem _ E = False
+elem x (H e l r s) =
+  let ch = x == e
+      lh = if x >= minimum l then elem x l else False
+      rh = if x >= minimum r then elem x r else False
+  in ch || rh || lh
+
+-- delete all occurrences of the specified element from the heap
+-- if there are multiple occurrences of an element in the heap, the shape
+-- property is not guaranteed to be preserved.  However, insert and delete
+-- operations do not assume this property and it will approach the shape
+-- property over successive applications of both.
+-- this is currently O(n).  On the TODO list is making it more efficient O(n),
+-- which will happen through short circuiting the traversal harder.
+deleteAll :: (Ord a, Eq a) => a -> Heap a -> (Bool, Heap a)
+deleteAll _ E = (False, E)
+deleteAll x (H e l r s) =
+  if x == e then
+    let (_, r) = deleteAll x $ snd $ deleteMin (H e l r s)
+    in (True, r)
+  else
+    let (lb, newl) = deleteAll x l
+        (rb, newr) = deleteAll x r
+    in (lb || rb, H e newl newr (size newl + size newr))
 
 -- combine two heaps
 meld = undefined
-
--- delete the specified element from the heap
-delete = undefined
 
 -- turn a list into a heap
 fromList = undefined
