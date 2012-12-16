@@ -42,6 +42,15 @@ isGood :: (Eq a, Ord a) => Heap a -> Bool
 isGood Empty = True
 isGood (H h) = sizes h && structure h
 
+-- gets the smallest element
+getMin' :: (Eq a, Ord a) => Heap' a -> a
+getMin' (Neither a _) = a
+getMin' (Once a _ _) = a
+getMin' (Both a _ _ _) = a
+getMin :: (Eq a, Ord a) => Heap a -> Maybe a
+getMin Empty = Nothing
+getMin (H h) = Just $ getMin' h
+
 -- is the heap empty
 isEmpty :: (Eq a, Ord a) => Heap a -> Bool
 isEmpty Empty = True
@@ -127,11 +136,22 @@ deleteMin (H h) =
   in
     case dm h of (a, ha) -> (Just a, H ha)
 
+-- is the element in the heap
+elem' :: (Ord a, Eq a) => a -> Heap' a -> Bool
+elem' x (Neither a _) = x == a
+elem' x (Once a l _) = x == a || elem' x l -- should short-circuit
+elem' x (Both a l r _) =
+  let ch = x == a
+      lh = if x >= getMin' l then elem' x l else False
+      rh = if x >= getMin' r then elem' x r else False
+  in
+    ch || rh || lh
+elem :: (Ord a, Eq a) => a -> Heap a -> Bool
+elem x Empty = False
+elem x (H h) = elem' x h
+
 -- combine two heaps
 meld = undefined
-
--- is the element in the heap
-elem = undefined
 
 -- delete the specified element from the heap
 delete = undefined
