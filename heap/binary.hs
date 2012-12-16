@@ -73,40 +73,65 @@ minimum (H h) = Just $ case h of Neither x _ -> x
                                  Both x _ _ _ -> x
 
 -- insert into the heap
+insert' :: (Eq a, Ord a) => a -> Heap' a -> Heap' a
+insert' a (Neither b s) =
+  if a <= b then
+    Once a (Neither b 1) 2
+  else
+    Once b (Neither a 1) 2
+insert' a (Once b bh s) =
+  if a <= b then
+    Both a bh (Neither b 1) (s+1)
+  else
+    Both b bh (Neither a 1) (s+1)
+insert' a (Both b left right s)
+  | a < b = insert' b (Both a left right s)
+  | size' left > size' right =
+    -- insert into right
+    Both b left (insert' a right) (s+1)
+  | otherwise =
+    -- insert into left
+    Both b (insert' a left) right (s+1)
 insert :: (Eq a, Ord a) => a -> Heap a -> Heap a
 insert x Empty = H $ Neither x 1
-insert x (H h) = H $
+insert x (H h) = H $ insert' x h
+
+-- delete the minimum element
+deleteMin :: (Ord a, Eq a) => Heap a -> (Maybe a, Heap a)
+deleteMin Empty = (Nothing, Empty)
+deleteMin (H (Neither a 1)) = (Just a, Empty)
+deleteMin (H h) =
   let
-    insert' :: (Eq a, Ord a) => a -> Heap' a -> Heap' a
-    insert' a (Neither b s) =
-      if a <= b then
-        Once a (Neither b 1) 2
+    dm :: (Ord a, Eq a) => Heap' a -> (a, Heap' a)
+    dm (Neither a 1) = undefined -- should never be reached
+    dm (Once a l s) = (a, l)
+    dm (Both a l r s) =
+      if size' l > size' r then
+        -- take it from l
+        -- this will never be Neither because strict >
+        let (e, newl) = dm l
+            r' = insert' e r -- rebalance code is redundant
+            (q, newr) = dm r'
+        in (a, Both q newl newr (s-1))
       else
-        Once b (Neither a 1) 2
-    insert' a (Once b bh s) =
-      if a <= b then
-        Both a bh (Neither b 1) (s+1)
-      else
-        Both b bh (Neither a 1) (s+1)
-    insert' a (Both b left right s)
-      | a < b = insert' b (Both a left right s)
-      | size' left > size' right =
-        -- insert into right
-        Both b left (insert' a right) (s+1)
-      | otherwise =
-        -- insert into left
-        Both b (insert' a left) right (s+1)
+        -- take it from r
+        case r of
+          Neither re _ -> -- they're both neither
+            let Neither le _ = l
+            in (a, Once (max le re) (Neither (min le re) 1) 2)
+          _ -> -- neither are neither
+            let (e, newr) = dm r
+                l' = insert' e l
+                (q, newl) = dm l'
+            in (a, Both q newl newr (s-1))
   in
-    insert' x h
+    case dm h of (a, ha) -> (Just a, H ha)
 
 -- combine two heaps
 meld = undefined
 
 -- is the element in the heap
 elem = undefined
-
--- delete the minimum element
-deleteMin = undefined
 
 -- delete the specified element from the heap
 delete = undefined
