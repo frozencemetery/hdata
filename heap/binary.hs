@@ -17,9 +17,8 @@ sizes (H _ l r s) = sizes l &&
 structure :: (Eq a, Ord a) => Heap a -> Bool
 structure E = True
 structure (H e l r _) =
-  let
-    lh = structure l && if isEmpty l then True else e <= fromJust (minelt l)
-    rh = structure r && if isEmpty r then True else e <= fromJust (minelt r)
+  let lh = structure l && if isEmpty l then True else e <= fromJust (minelt l)
+      rh = structure r && if isEmpty r then True else e <= fromJust (minelt r)
   in lh && rh
 
 isGood :: (Eq a, Ord a) => Heap a -> Bool
@@ -119,6 +118,7 @@ toList = reverse . toRlist
 -- see note at toList
 -- will be faster than toList because it does not reverse
 toRlist :: (Ord a, Eq a) => Heap a -> [a]
+toRlist E = []
 toRlist h =
   let tl :: (Ord a, Eq a) => [Heap a] -> [a] -> [a]
       tl [] acc = acc
@@ -148,15 +148,38 @@ toUlist h =
 -- turn a list into a heap
 -- TODO cost bound on this
 fromList :: (Ord a, Eq a) => [a] -> Heap a
-fromList [] = E
-fromList [e] = H e E E 1
-fromList [a,b] = H a (H b E E 1) E 2
-fromList (x:xs) =
-  let len = ceiling $ fromRational $ (toRational $ length xs) / 2
-      (lh, rh) = splitAt len xs
-      (l, r) = (fromList lh, fromList rh)
-  in H x l r (size l + size r + 1)
+fromList =
+  let
+    fl :: (Ord a, Eq a) => [a] -> Heap a
+    fl [] = E
+    fl [e] = H e E E 1
+    fl [a,b] = H a (H b E E 1) E 2
+    fl (x:xs) =
+      let len = (length xs + 1) `div` 2
+          (lh, rh) = splitAt len xs
+          (l, r) = (fl lh, fl rh)
+      in H x l r (size l + size r + 1)
+    fs :: (Ord a, Eq a) => Heap a -> Heap a
+    fs E = E
+    fs (H e E E s) = (H e E E 1)
+    fs (H e E l s) = fs (H e l E s) -- bad
+    fs (H e l r s) =
+      let (H le ll lr ls) = fs l
+          e' = min e le
+          le' = max e le
+      in case fs r of
+           E -> (H e' (H le' ll lr ls) E (ls+1))
+           H re rl rr rs ->
+             let e'' = min e' re
+                 re' = max e' re
+             in H e'' (H re' rl rr rs) (H le' ll lr ls) (rs + ls + 1)
+  in fs . fl
 
 -- combine two heaps
--- if fromList is O(n), and toList is O(n), then this is easy
-meld = undefined
+-- this doesn't care about uniqueness of elts
+meld :: (Ord a, Eq a) => Heap a -> Heap a -> Heap a
+meld a b =
+  if size a > size b then
+    meld b a
+  else
+    fromList $ (toList a) ++ (toList b)
