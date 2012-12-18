@@ -146,9 +146,16 @@ toUlist h =
   in tl [h] []
 
 -- turn a list into a heap
--- O(n), so better than mapping insert over your list
--- problem is, I think functional insertion even into bst is O(log n) per elt
-fromList = undefined
+-- TODO cost bound on this
+fromList :: (Ord a, Eq a) => [a] -> Heap a
+fromList [] = E
+fromList [e] = H e E E 1
+fromList [a,b] = H a (H b E E 1) E 2
+fromList (x:xs) =
+  let len = ceiling $ fromRational $ (toRational $ length xs) / 2
+      (lh, rh) = splitAt len xs
+      (l, r) = (fromList lh, fromList rh)
+  in H x l r (size l + size r + 1)
 
 -- combine two heaps
 -- if fromList is O(n), and toList is O(n), then this is easy
