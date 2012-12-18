@@ -1,4 +1,6 @@
--- TODO this uses AVL explain why
+-- We use a slightly modified version of the normal binary heap property: the
+-- left and right children at each node must differ by at most one, with the
+-- left being the larger.  The complexity is identical.
 
 import Data.Maybe
 
