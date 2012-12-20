@@ -26,7 +26,7 @@ structure (H e l r _) =
 isGood :: (Eq a, Ord a) => Heap a -> Bool
 isGood x = sizes x && structure x
 
--- gets the smallest eltent
+-- gets the smallest element
 minelt :: (Eq a, Ord a) => Heap a -> Maybe a
 minelt E = Nothing
 minelt (H x _ _ _) = Just x
@@ -45,7 +45,7 @@ size (H _ _ _ s) = s
 empty :: (Eq a, Ord a) => Heap a
 empty = E
 
--- create a heap of one eltent
+-- create a heap of one element
 singleton :: (Eq a, Ord a) => a -> Heap a
 singleton x = H x E E 1
 
@@ -57,7 +57,7 @@ insert a (H e l r s)
   | size l > size r = H e l (insert a r) (s+1)
   | otherwise = H e (insert a l) r (s+1)
 
--- delete the minelt eltent
+-- delete the minimum element
 deleteMin :: (Ord a, Eq a) => Heap a -> (Maybe a, Heap a)
 deleteMin E = (Nothing, E)
 deleteMin (H e l r s)
@@ -83,22 +83,39 @@ elt x (H e l r s) =
   in ch || rh || lh
 
 -- delete all occurrences of the specified eltent from the heap
--- if there are multiple occurrences of an eltent in the heap, the shape
--- property is not guaranteed to be preserved.  However, insert and delete
--- operations do not assume this property and it will approach the shape
--- property over successive applications of both.
--- this is currently O(n).  On the TODO list is making it more efficient O(n),
--- which will happen through short circuiting the traversal harder.
+-- this kinda knocks the hell out of the shape property
+-- O(log n) for a single occurrence, up to O(n log n)
 deleteAll :: (Ord a, Eq a) => a -> Heap a -> (Bool, Heap a)
 deleteAll _ E = (False, E)
 deleteAll x (H e l r s) =
   if x == e then
-    let (_, r) = deleteAll x $ snd $ deleteMin (H e l r s)
-    in (True, r)
+    let (_, res) = deleteAll x $ snd $ deleteMin (H e l r s)
+    in (True, res)
   else
-    let (lb, newl) = deleteAll x l
-        (rb, newr) = deleteAll x r
-    in (lb || rb, H e newl newr (size newl + size newr))
+    case (l, r) of
+      (E, E) -> (False, H e l r s)
+      (H le ll lr ls, E) ->
+        if le > x then
+          (False, (H e (H le ll lr ls) E s))
+        else
+          let (b, res) = deleteAll x (H le ll lr ls)
+          in (b, H e res E s)
+      (E, H le ll lr ls) ->
+        if le > x then
+          (False, (H e (H le ll lr ls) E s))
+        else
+          let (b, res) = deleteAll x (H le ll lr ls)
+          in (b, H e res E s)
+      (H le ll lr ls, H re rl rr rs) ->
+        let (lb, l') = if x >= le then
+                         deleteAll x $ H le ll lr ls
+                       else
+                         (False, H le ll lr ls)
+            (rb, r') = if x >= re then
+                         deleteAll x $ H re rl rr rs
+                       else
+                         (False, H re rl rr rs)
+        in (lb || rb, (H e l' r' (size l' + size r' + 1)))
 
 -- return the largest element of the heap
 -- this is an O(n) traversal
