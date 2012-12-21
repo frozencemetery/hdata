@@ -124,7 +124,7 @@ deleteAll x (H e l r s) =
            (rb, rh) = deleteAll x r
            h = H e lh rh (size lh + size rh + 1)
            h' = if lb || rb then resize h else h
-       in (lb || rb, h)
+       in (lb || rb, h')
 
 
 -- return the largest element of the heap
