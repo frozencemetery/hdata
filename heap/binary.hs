@@ -34,8 +34,8 @@ sizes (H _ l r s) = sizes l &&
 structure :: (Eq a, Ord a) => Heap a -> Bool
 structure E = True
 structure (H e l r _) =
-  let lh = structure l && if isEmpty l then True else e <= fromJust (minelt l)
-      rh = structure r && if isEmpty r then True else e <= fromJust (minelt r)
+  let lh = structure l && isEmpty l || e <= fromJust (minelt l)
+      rh = structure r && isEmpty r || e <= fromJust (minelt r)
   in lh && rh
 
 isGood :: (Eq a, Ord a) => Heap a -> Bool
@@ -93,8 +93,8 @@ elt :: (Ord a, Eq a) => a -> Heap a -> Bool
 elt _ E = False
 elt x (H e l r s) =
   let ch = x == e
-      lh = if x >= fromMaybe x (minelt l) then elt x l else False
-      rh = if x >= fromMaybe x (minelt r) then elt x r else False
+      lh = x >= fromMaybe x (minelt l) && elt x l
+      rh = x >= fromMaybe x (minelt r) && elt x r
   in ch || rh || lh
 
 -- delete all occurrences of the specified eltent from the heap
@@ -104,16 +104,16 @@ deleteAll :: (Ord a, Eq a) => a -> Heap a -> (Bool, Heap a)
 deleteAll _ E = (False, E)
 deleteAll x (H e l r s) =
   let resize :: (Ord a, Eq a) => Heap a -> Heap a
-      resize (H e l r s) =
-        if size l > (size r + 1) then
+      resize (H e l r s)
+        | size l > (size r + 1) =
           let (Just e', l') = deleteMin l
               r' = insert e' r
           in resize $ H e l' r' s
-        else if size r > (size l + 1) then
+        | size r > (size l + 1) =
           let (Just e', r') = deleteMin r
               l' = insert e' l
           in resize $ H e l' r' s
-        else
+        | otherwise =
           H e l r s
   in if e == x then
        let (b, nh) = deleteAll x $ snd $ deleteMin $ H e l r s
@@ -158,7 +158,7 @@ toRlist h =
   let tl :: (Ord a, Eq a) => [Heap a] -> [a] -> [a]
       tl [] acc = acc
       tl hl acc =
-        let next = minimum $ catMaybes $ map minelt hl
+        let next = minimum $ mapMaybe minelt hl
             tv :: (Ord a, Eq a) => [Heap a] -> a -> [Heap a]
             tv [] _ = []
             tv (E:xs) e = tv xs e
@@ -181,7 +181,7 @@ toUlist h =
   in tl [h] []
 
 -- turn a list into a heap
--- TODO cost bound on this
+-- this should be O(n) unless I did it wrong
 fromList :: (Ord a, Eq a) => [a] -> Heap a
 fromList =
   let
@@ -203,7 +203,7 @@ fromList =
           e' = min e le
           le' = max e le
       in case fs r of
-           E -> (H e' (H le' ll lr ls) E (ls+1))
+           E -> H e' (H le' ll lr ls) E (ls+1)
            H re rl rr rs ->
              let e'' = min e' re
                  re' = max e' re
@@ -212,9 +212,10 @@ fromList =
 
 -- combine two heaps
 -- this doesn't care about uniqueness of elts
+-- O(n) though which is nice
 meld :: (Ord a, Eq a) => Heap a -> Heap a -> Heap a
 meld a b =
   if size a > size b then
     meld b a
   else
-    fromList $ (toList a) ++ (toList b)
+    fromList $ toUlist a ++ toUlist b
