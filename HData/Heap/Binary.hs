@@ -26,48 +26,48 @@ instance (Show a) => Show (Heap a) where
     in s' a 0
 
 -- verify heap integrity
-sizes :: (Eq a, Ord a) => Heap a -> Bool
+sizes :: (Ord a) => Heap a -> Bool
 sizes E = True
 sizes (H _ l r s) = sizes l &&
                     sizes r &&
                     abs (size l - size r) <= 1 &&
                     s == size l + size r + 1
 
-structure :: (Eq a, Ord a) => Heap a -> Bool
+structure :: (Ord a) => Heap a -> Bool
 structure E = True
 structure (H e l r _) =
   let lh = structure l && isEmpty l || e <= fromJust (minelt l)
       rh = structure r && isEmpty r || e <= fromJust (minelt r)
   in lh && rh
 
-isGood :: (Eq a, Ord a) => Heap a -> Bool
+isGood :: (Ord a) => Heap a -> Bool
 isGood x = sizes x && structure x
 
 -- gets the smallest element
-minelt :: (Eq a, Ord a) => Heap a -> Maybe a
+minelt :: (Ord a) => Heap a -> Maybe a
 minelt E = Nothing
 minelt (H x _ _ _) = Just x
 
 -- is the heap empty
-isEmpty :: (Eq a, Ord a) => Heap a -> Bool
+isEmpty :: (Ord a) => Heap a -> Bool
 isEmpty E = True
 isEmpty _ = False
 
 -- number of eltents contained
-size :: (Eq a, Ord a) => Heap a -> Size
+size :: (Ord a) => Heap a -> Size
 size E = 0
 size (H _ _ _ s) = s
 
 -- create a new empty heap
-empty :: (Eq a, Ord a) => Heap a
+empty :: (Ord a) => Heap a
 empty = E
 
 -- create a heap of one element
-singleton :: (Eq a, Ord a) => a -> Heap a
+singleton :: (Ord a) => a -> Heap a
 singleton x = H x E E 1
 
 -- insert into the heap
-insert :: (Eq a, Ord a) => a -> Heap a -> Heap a
+insert :: (Ord a) => a -> Heap a -> Heap a
 insert a E = H a E E 1
 insert a (H e l r s)
   | a < e = insert e (H a l r s)
@@ -75,7 +75,7 @@ insert a (H e l r s)
   | otherwise = H e (insert a l) r (s+1)
 
 -- delete the minimum element
-deleteMin :: (Ord a, Eq a) => Heap a -> (Maybe a, Heap a)
+deleteMin :: (Ord a) => Heap a -> (Maybe a, Heap a)
 deleteMin E = (Nothing, E)
 deleteMin (H e l r s)
   | isEmpty l && isEmpty r = (Just e, E)
@@ -91,7 +91,7 @@ deleteMin (H e l r s)
     in (Just e, H q newl' newr (s-1))
 
 -- is the element in the heap
-elt :: (Ord a, Eq a) => a -> Heap a -> Bool
+elt :: (Ord a) => a -> Heap a -> Bool
 elt _ E = False
 elt x (H e l r s) =
   let ch = x == e
@@ -102,10 +102,10 @@ elt x (H e l r s) =
 -- delete all occurrences of the specified eltent from the heap
 -- this kinda knocks the hell out of the shape property
 -- O(log n) for a single occurrence, up to O(n log n)
-deleteAll :: (Ord a, Eq a) => a -> Heap a -> (Bool, Heap a)
+deleteAll :: (Ord a) => a -> Heap a -> (Bool, Heap a)
 deleteAll _ E = (False, E)
 deleteAll x (H e l r s) =
-  let resize :: (Ord a, Eq a) => Heap a -> Heap a
+  let resize :: (Ord a) => Heap a -> Heap a
       resize (H e l r s)
         | size l > (size r + 1) =
           let (Just e', l') = deleteMin l
@@ -137,7 +137,7 @@ deleteAll x (H e l r s) =
 
 -- return the largest element of the heap
 -- this is an O(n) traversal
-maxelt :: (Ord a, Eq a) => Heap a -> Maybe a
+maxelt :: (Ord a) => Heap a -> Maybe a
 maxelt E = Nothing
 maxelt (H e l r s) =
   let lm = fromMaybe e $ maxelt l
@@ -148,20 +148,20 @@ maxelt (H e l r s) =
 -- O(n log n), but better than doing it and then qsorting it
 -- in fact, it happens at the speed of heapsort
 -- funny thing about that
-toList :: (Ord a, Eq a) => Heap a -> [a]
+toList :: (Ord a) => Heap a -> [a]
 toList = reverse . toRlist
 
 -- turns a heap into a reverse-sorted list
 -- see note at toList
 -- will be faster than toList because it does not reverse
-toRlist :: (Ord a, Eq a) => Heap a -> [a]
+toRlist :: (Ord a) => Heap a -> [a]
 toRlist E = []
 toRlist h =
-  let tl :: (Ord a, Eq a) => [Heap a] -> [a] -> [a]
+  let tl :: (Ord a) => [Heap a] -> [a] -> [a]
       tl [] acc = acc
       tl hl acc =
         let next = minimum $ mapMaybe minelt hl
-            tv :: (Ord a, Eq a) => [Heap a] -> a -> [Heap a]
+            tv :: (Ord a) => [Heap a] -> a -> [Heap a]
             tv [] _ = []
             tv (E:xs) e = tv xs e
             tv ((H e l r s):xs) x = 
@@ -174,9 +174,9 @@ toRlist h =
 
 -- turns a heap into an unordered list
 -- this is O(n)
-toUlist :: (Ord a, Eq a) => Heap a -> [a]
+toUlist :: (Ord a) => Heap a -> [a]
 toUlist h =
-  let tl :: (Ord a, Eq a) => [Heap a] -> [a] -> [a]
+  let tl :: (Ord a) => [Heap a] -> [a] -> [a]
       tl [] acc = acc
       tl (E:xs) acc = tl xs acc
       tl ((H e l r s):xs) acc = tl (l : r : xs) (e : acc)
@@ -184,10 +184,10 @@ toUlist h =
 
 -- turn a list into a heap
 -- this should be O(n) unless I did it wrong
-fromList :: (Ord a, Eq a) => [a] -> Heap a
+fromList :: (Ord a) => [a] -> Heap a
 fromList =
   let
-    fl :: (Ord a, Eq a) => [a] -> Heap a
+    fl :: (Ord a) => [a] -> Heap a
     fl [] = E
     fl [e] = H e E E 1
     fl [a,b] = H a (H b E E 1) E 2
@@ -196,7 +196,7 @@ fromList =
           (lh, rh) = splitAt len xs
           (l, r) = (fl lh, fl rh)
       in H x l r (size l + size r + 1)
-    fs :: (Ord a, Eq a) => Heap a -> Heap a
+    fs :: (Ord a) => Heap a -> Heap a
     fs E = E
     fs (H e E E s) = (H e E E 1)
     fs (H e E l s) = fs (H e l E s) -- bad
@@ -215,7 +215,7 @@ fromList =
 -- combine two heaps
 -- this doesn't care about uniqueness of elts
 -- O(n) though which is nice
-meld :: (Ord a, Eq a) => Heap a -> Heap a -> Heap a
+meld :: (Ord a) => Heap a -> Heap a -> Heap a
 meld a b =
   if size a > size b then
     meld b a
@@ -223,7 +223,7 @@ meld a b =
     fromList $ toUlist a ++ toUlist b
 
 -- TODO: make this better
-deleteMinAndInsert :: (Ord a, Eq a) => Heap a -> a -> Heap a
+deleteMinAndInsert :: (Ord a) => Heap a -> a -> Heap a
 deleteMinAndInsert h e =
   let (_, h') = deleteMin h
   in insert e h'
