@@ -223,7 +223,7 @@ meld a b =
     fromList $ toUlist a ++ toUlist b
 
 -- TODO: make this better
-deleteMinAndInsert :: (Ord a) => Heap a -> a -> Heap a
-deleteMinAndInsert h e =
+deleteMinAndInsert :: (Ord a) => a -> Heap a -> Heap a
+deleteMinAndInsert e h =
   let (_, h') = deleteMin h
   in insert e h'
