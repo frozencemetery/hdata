@@ -6,7 +6,22 @@ import Data.Maybe
 
 type Size = Int
 
-data Heap a = E | H a (Heap a) (Heap a) Size deriving (Show)
+data Heap a = E | H a (Heap a) (Heap a) Size
+
+instance (Show a) => Show (Heap a) where
+  show E = "EMPTY"
+  show a =
+    let pss :: Integer -> String -> String
+        pss 0 acc = acc
+        pss i acc = pss (i-1) $ ' ' : acc
+        s' :: (Show a) => Heap a -> Integer -> String
+        s' E i = (pss i "") ++ "EMPTY"
+        s' (H e l r s) i =
+          let lh = s' l $ i+2
+              rh = s' r $ i+2
+              sp = pss i ""
+          in sp ++ "(" ++ show e ++ ") :: " ++ show s ++ "\n" ++ lh ++ "\n" ++ rh
+    in s' a 0
 
 -- verify heap integrity
 sizes :: (Eq a, Ord a) => Heap a -> Bool
@@ -88,34 +103,29 @@ elt x (H e l r s) =
 deleteAll :: (Ord a, Eq a) => a -> Heap a -> (Bool, Heap a)
 deleteAll _ E = (False, E)
 deleteAll x (H e l r s) =
-  if x == e then
-    let (_, res) = deleteAll x $ snd $ deleteMin (H e l r s)
-    in (True, res)
-  else
-    case (l, r) of
-      (E, E) -> (False, H e l r s)
-      (H le ll lr ls, E) ->
-        if le > x then
-          (False, (H e (H le ll lr ls) E s))
+  let resize :: (Ord a, Eq a) => Heap a -> Heap a
+      resize (H e l r s) =
+        if size l > (size r + 1) then
+          let (Just e', l') = deleteMin l
+              r' = insert e' r
+          in resize $ H e l' r' s
+        else if size r > (size l + 1) then
+          let (Just e', r') = deleteMin r
+              l' = insert e' l
+          in resize $ H e l' r' s
         else
-          let (b, res) = deleteAll x (H le ll lr ls)
-          in (b, H e res E s)
-      (E, H le ll lr ls) ->
-        if le > x then
-          (False, (H e (H le ll lr ls) E s))
-        else
-          let (b, res) = deleteAll x (H le ll lr ls)
-          in (b, H e res E s)
-      (H le ll lr ls, H re rl rr rs) ->
-        let (lb, l') = if x >= le then
-                         deleteAll x $ H le ll lr ls
-                       else
-                         (False, H le ll lr ls)
-            (rb, r') = if x >= re then
-                         deleteAll x $ H re rl rr rs
-                       else
-                         (False, H re rl rr rs)
-        in (lb || rb, (H e l' r' (size l' + size r' + 1)))
+          H e l r s
+  in if e == x then
+       let (b, nh) = deleteAll x $ snd $ deleteMin $ H e l r s
+           nh' = if b then resize nh else nh
+       in (True, nh')
+     else
+       let (lb, lh) = deleteAll x l
+           (rb, rh) = deleteAll x r
+           h = H e lh rh (size lh + size rh + 1)
+           h' = if lb || rb then resize h else h
+       in (lb || rb, h)
+
 
 -- return the largest element of the heap
 -- this is an O(n) traversal
