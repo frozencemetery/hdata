@@ -120,8 +120,14 @@ deleteAll x (H e l r s) =
            nh' = if b then resize nh else nh
        in (True, nh')
      else
-       let (lb, lh) = deleteAll x l
-           (rb, rh) = deleteAll x r
+       let (lb, lh) = if size l == 0 || (fromJust $ minelt l) <= x then
+                        deleteAll x l
+                      else
+                        (False, l)
+           (rb, rh) = if size r == 0 || (fromJust $ minelt r) <= x then
+                        deleteAll x r
+                      else
+                        (False, r)
            h = H e lh rh (size lh + size rh + 1)
            h' = if lb || rb then resize h else h
        in (lb || rb, h')
