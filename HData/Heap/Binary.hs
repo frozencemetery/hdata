@@ -2,6 +2,8 @@
 -- left and right children at each node must differ by at most one, with the
 -- left being the larger.  The complexity is identical.
 
+module HData.Heap.Binary where
+
 import Data.Maybe
 
 type Size = Int
