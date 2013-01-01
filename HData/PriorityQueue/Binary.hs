@@ -14,10 +14,8 @@ minKey x = case H.minelt x of
              Nothing -> Nothing
              Just (q, _) -> Just q
 
-minKeyValue :: (Ord a, Ord b) => PQ a b -> Maybe b
-minKeyValue x = case H.minelt x of
-                  Nothing -> Nothing
-                  Just (_, q) -> Just q
+minKeyValue :: (Ord a, Ord b) => PQ a b -> Maybe (a, b)
+minKeyValue = H.minelt
 
 insert :: (Ord a, Ord b) => a -> b -> PQ a b -> PQ a b
 insert k v = H.insert (k, v)
