@@ -9,11 +9,11 @@ data BT a = E | BT { elt :: a
                    , children :: [BT a]
                    } deriving (Show)
 
--- O(1)
+-- O(1) non-amortized
 empty :: FH a
 empty = FH { minTree = E, trees = [] }
 
--- O(1)
+-- O(1) non-amortized
 singleton :: a -> FH a
 singleton a = FH { minTree = BT { elt = a
                                 , minChild = E
@@ -22,7 +22,7 @@ singleton a = FH { minTree = BT { elt = a
                  , trees = []
                  }
 
--- O(1)
+-- O(1) non-amortized
 merge :: (Ord a) => FH a -> FH a -> FH a
 merge a b =
   case (minTree a, minTree b) of
@@ -34,11 +34,11 @@ merge a b =
       else
         FH { minTree = b', trees = [a'] ++ trees a ++ trees b }
 
--- O(1)
+-- O(1) non-amortized
 insert :: (Ord a) => a -> FH a -> FH a
 insert a = merge (singleton a)
 
--- O(1)
+-- O(1) non-amortized
 findMin :: FH a -> Maybe a
 findMin a =
   case minTree a of
@@ -48,8 +48,12 @@ findMin a =
 -- O(log n) amortized
 deleteMin :: FH a -> (Maybe a, FH a)
 deleteMin (FH E _) = (Nothing, empty)
-deleteMin (FH mt ts) = undefined
+deleteMin (FH mt ts) =
+  let ret = elt mt
+      ts' = minChild mt : children mt ++ ts
+  in undefined
 
--- O(log n) amortized for single match
+-- O(log n) amortized (assumes single match)
 delete :: a -> FH a -> (Bool, FH a)
-delete = undefined
+delete _ (FH E _) = (False, empty)
+delete _ _ = undefined
