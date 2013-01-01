@@ -15,7 +15,12 @@ empty = FH { minTree = E, trees = [] }
 
 -- O(1)
 singleton :: a -> FH a
-singleton a = FH { minTree = BT { elt = a, minChild = E, children = [] }, trees = []}
+singleton a = FH { minTree = BT { elt = a
+                                , minChild = E
+                                , children = [] 
+                                }
+                 , trees = []
+                 }
 
 -- O(1)
 merge :: (Ord a) => FH a -> FH a -> FH a
