@@ -53,41 +53,40 @@ findMin a =
     b -> Just $ elt b
 
 -- O(log n) amortized
+-- logic lifted from liuxinyu95 (under GPLv3)
 deleteMin :: (Ord a) => FH a -> (Maybe a, FH a)
 deleteMin (FH E _) = (Nothing, empty)
 deleteMin (FH (BT e [] _) []) = (Just e, empty)
-deleteMin (FH mt ts) = runST $ do
+deleteMin (FH mt ts) =
   let ret = elt mt
-  let ats = children mt ++ ts
-  let limit = rank $ maximumBy (\a b -> compare (rank a) (rank b)) ats
-  arr <- newArray (1, limit + length ats) Nothing
-      :: ST s (STArray s Int (Maybe (BT a)))
-  forM_ ats $ \x -> do
-    melt <- readArray arr (rank x)
-    case melt of 
-      Nothing -> writeArray arr (rank x) (Just x)
-      Just a -> (writeArray arr (rank x) Nothing) >> 
-                (writeArray arr (1 + rank x) 
-                              (Just $ if elt a < elt x then
-                                        BT { elt = elt a
-                                           , children = x : children a 
-                                           , rank = 1 + rank x 
-                                           }
-                                      else
-                                        BT { elt = elt x
-                                           , children = a : children x
-                                           , rank = 1 + rank x
-                                           }
-                              )
-                )
-  elems <- getElems arr
-  let es = map fromJust $ filter isJust elems
-  let minE = minimumBy (\x y -> compare (elt x) (elt y)) es
-  let (_, childE) = span (== minE) es
-  return $ (Just ret, FH { minTree = minE
-                         , trees = childE
-                         }
-           )
+      ts' = children mt ++ ts
+      splitMin :: (Ord a) => [BT a] -> (BT a, [BT a])
+      splitMin [x] = (x, [])
+      splitMin (x:xs) =
+        let (r, xs') = splitMin xs
+            (l, s) = if elt x < elt r then (r, x) else (x, r)
+        in (s, l:xs')
+      (minE, circE) = splitMin ts'
+      coalesce :: (Ord a) => [BT a] -> BT a -> [BT a]
+      coalesce [] x = [x]
+      coalesce (x:xs) cur
+        | rank x == rank cur = coalesce xs $
+          if elt x < elt cur then
+            BT { elt = elt x
+               , children = cur : children x
+               , rank = 1 + rank x
+               }
+          else
+            BT { elt = elt cur
+               , children = x : children cur
+               , rank = 1 + rank x
+               }
+        | rank cur < rank x = cur:x:xs
+        | otherwise = x : coalesce xs cur
+  in (Just ret, FH { minTree = minE
+                   , trees = foldl coalesce [] circE
+                   }
+     )
 
 -- O(log n) amortized (assumes single match)
 delete :: a -> FH a -> (Bool, FH a)
