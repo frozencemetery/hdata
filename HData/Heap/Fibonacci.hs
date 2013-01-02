@@ -1,3 +1,5 @@
+module HData.Heap.Fibonacci where
+
 import Data.List
 import Data.Maybe
 import Control.Monad
