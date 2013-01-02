@@ -53,6 +53,7 @@ findMin a =
 -- O(log n) amortized
 deleteMin :: (Ord a) => FH a -> (Maybe a, FH a)
 deleteMin (FH E _) = (Nothing, empty)
+deleteMin (FH (BT e [] _) []) = (Just e, empty)
 deleteMin (FH mt ts) = runST $ do
   let ret = elt mt
   let ats = children mt ++ ts
