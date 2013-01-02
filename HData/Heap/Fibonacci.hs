@@ -53,15 +53,15 @@ findMin a =
 -- O(log n) amortized
 deleteMin :: (Ord a) => FH a -> (Maybe a, FH a)
 deleteMin (FH E _) = (Nothing, empty)
-deleteMin (FH (mt :: BT a) (ts :: [BT a])) = runST $ do
-  let ret = elt mt :: a
-  let ats = children mt ++ ts :: [BT a]
-  let limit = rank $ maximumBy (\a b -> compare (rank a) (rank b)) ats :: Int
+deleteMin (FH mt ts) = runST $ do
+  let ret = elt mt
+  let ats = children mt ++ ts
+  let limit = rank $ maximumBy (\a b -> compare (rank a) (rank b)) ats
   arr <- newArray (1, limit + length ats) Nothing
       :: ST s (STArray s Int (Maybe (BT a)))
   forM_ ats $ \x -> do
     melt <- readArray arr (rank x)
-    case (melt :: Maybe (BT a)) of 
+    case melt of 
       Nothing -> writeArray arr (rank x) (Just x)
       Just a -> (writeArray arr (rank x) Nothing) >> 
                 (writeArray arr (1 + rank x) 
@@ -78,10 +78,13 @@ deleteMin (FH (mt :: BT a) (ts :: [BT a])) = runST $ do
                               )
                 )
   elems <- getElems arr
-  let es = map fromJust $ filter isJust elems :: [BT a]
-  let minE = minimumBy (\x y -> compare (elt x) (elt y)) es :: BT a
-  let (_, childE) = span (== minE) es :: ([BT a], [BT a])
-  undefined
+  let es = map fromJust $ filter isJust elems
+  let minE = minimumBy (\x y -> compare (elt x) (elt y)) es
+  let (_, childE) = span (== minE) es
+  return $ (Just ret, FH { minTree = minE
+                         , trees = childE
+                         }
+           )
 
 -- O(log n) amortized (assumes single match)
 delete :: a -> FH a -> (Bool, FH a)
