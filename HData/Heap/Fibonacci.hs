@@ -1,3 +1,8 @@
+-- a nontrivial runtime improvement will probably arise out of eliminating the
+-- safety of the Maybes and allowing direct calling into the functions
+--
+-- I expect there's general ricing to be done as well
+
 module HData.Heap.Fibonacci where
 
 import Data.List
