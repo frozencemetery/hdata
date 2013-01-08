@@ -1,3 +1,3 @@
 module HData.PriorityQueue (module X) where
 
-import HData.PriorityQueue.Binary as X
+import HData.PriorityQueue.Fibonacci as X
