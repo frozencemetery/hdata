@@ -5,8 +5,7 @@ import Data.Maybe
 
 import qualified HData.Heap as H
 import qualified HData.PriorityQueue as PQ
-
-import qualified Data.Set as S
+import qualified HData.Stack as S
 
 tabulate :: [a] -> [(Int, a)]
 tabulate = zip [1..]
