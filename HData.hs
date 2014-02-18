@@ -118,3 +118,4 @@ cutb :: Int -> [a] -> [a]
 cutb n xs
   | length xs <= n = xs
   | otherwise = cutb n $ tail xs
+
