@@ -113,3 +113,8 @@ rotations xs =
       rotate 0 _ acc = acc
       rotate n xs acc = rotate (n-1) (r xs) (xs:acc)
   in rotate (length xs) xs []
+
+cutb :: Int -> [a] -> [a]
+cutb n xs
+  | length xs <= n = xs
+  | otherwise = cutb n $ tail xs
